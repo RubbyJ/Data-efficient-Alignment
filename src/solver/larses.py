@@ -15,7 +15,7 @@ def update_adam_lars(optimizer, lars_coef):
             optimizer.zero_grad()
             loss.backward()
 
-            ori_lr = update_adam_lars(optimizer, args)
+            ori_lr = update_adam_lars(optimizer, lars_coef)
             # The base learning rate for each 'param_group' in optimizer is the same by default,
             # or you may customize your own version for resetting the different base learning rates.
             optimizer.step()
