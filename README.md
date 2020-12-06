@@ -6,8 +6,13 @@ This repository is an implementation of WACV 2021 paper 'Data-efficient Alignmen
 # Contents
 * [Prerequisites](#prerequisites)
 * [Dataset & Feature Extraction](#dataset--feature-extraction)
+  * [Dataset](#dataset)
+  * [Feature Extraction](#feature-extraction)
 * [Highligts](#highlights)
-* [Training Example](#training-example)
+* [Quick Start](#quick-start)
+  * [Downloading](#downloading)
+  * [Evaluation Example](#evaluation-example)
+  * [Training Example](#training-example)
 
 ## Prerequisites
 
@@ -15,13 +20,15 @@ This repository is an implementation of WACV 2021 paper 'Data-efficient Alignmen
 - pytorch == 1.4.0
 - tensorboard
 
+Or 
+`conda env create -f alignment.yml`.
+
 ## Dataset & Feature Extraction
 
 ### Dataset
 
-Please refer to [@pelindogan/NeuMATCH](https://github.com/pelindogan/NeuMATCH) this repo for YouTube Movie Summaries(YMS) Dataset. 
-`YMS/annotations_phrases.txt` shows the ground truth matched pairs.
-We ask the authors for YMS data splits, which are provided in `YMS_Dataset` directory. 
+The [YMS_dataset](YMS_dataset) directory provides the information for YouTube Movie Summaries(YMS) Dataset. 
+
 
 ### Feature Extraction
 
@@ -30,16 +37,39 @@ For each video clip, we extract features of the central frame using Faster-RCNN 
 
 For a text snippet, we extract 768-dimensional sentence embedding from the [BERT](https://github.com/google-research/bert) - Base model. 
 
+
 ## Highlights
 
 - [SBN](src/model/SBN.py) - an implementation of Sequence-wise Batch Normalization (not support Multi-GPU training now).
 - [LARS](src/solver/larses.py) - a function for adding LARS to an Adam optimizer.
 
-## Training Example
+
+## Quick Start 
+
+### Downloading
+For the convenience of experience, we provide the processed data and 
+a pretrained Model (RP+LARS+SBN) at [Google Cloud](https://drive.google.com/drive/folders/1sPh3FDQ3g_OtBJrw_jDL0FPUjskJmlKV?usp=sharing). 
+Please put it under this directory. 
+
+### Evaluation Example
+After downloading the data and model, let's take an evaluation example on TEST.
+
+```
+CUDA_VISIBLE_DEVICES=0 python do.py \
+--evaluate \
+--SBN \
+--random_project \
+--dataset yms \
+--where_best './data/RP_SBN_LARS.ckpt' 
+```
+
+
+### Training Example
 
 An example for training,
+
 ```
-python do.py \
+CUDA_VISIBLE_DEVICES=0 python do.py \
 --lr 7 
 --loss ls --lsr_epsilon 0.03 \
 --adamlars --lars_coef 1e-3 \
@@ -50,4 +80,4 @@ python do.py \
 ```
 
 
-
+[YMS]:https://github.com/RubbyJ/NeuMATCH

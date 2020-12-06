@@ -25,6 +25,60 @@ def main():
     """ model init """
     AlignNet_instance = AlignNet(args).cuda()
 
+    """ evaluation """
+    if args.evaluate:
+        if args.dataset == 'yms':
+            if args.LXMERT:
+                test_db = NeuMatch_YMS_LXMERT_Dataset('./data/', args.dataset, args.max_seq_len, 'test')
+            else:
+                test_db = NeuMatch_YMS_BERT_Dataset('./data/', args.dataset, args.max_seq_len, 'test', args.random_project)
+        else:
+            raise ValueError
+
+        test_dataLoader = torch.utils.data.DataLoader(test_db, batch_size=args.batch_size,
+                                                      shuffle=False, num_workers=0,
+                                                      pin_memory=True)
+        ckpt = torch.load(
+            args.where_best
+        )['model_state_dict']
+
+        AlignNet_instance.load_state_dict(ckpt)
+
+        evaluate(test_dataLoader, AlignNet_instance, args, None, None, phase='Test')
+        return
+
+    """ data """
+    if args.dataset == 'yms':
+        print("* YMS dataset *")
+        if args.LXMERT:
+            print("** LXMERT FEATURE **")
+            train_db = NeuMatch_YMS_LXMERT_Dataset('./data/', args.dataset, args.training_max_seq_len, 'training')
+            val_db = NeuMatch_YMS_LXMERT_Dataset('./data/', args.dataset, args.max_seq_len, 'val')
+            test_db = NeuMatch_YMS_LXMERT_Dataset('./data/', args.dataset, args.max_seq_len, 'test')
+        else:
+            train_db = NeuMatch_YMS_BERT_Dataset('./data/', args.dataset, args.training_max_seq_len,
+                                                 'training', args.random_project)
+            val_db = NeuMatch_YMS_BERT_Dataset('./data/', args.dataset, args.max_seq_len, 'val', args.random_project)
+            test_db = NeuMatch_YMS_BERT_Dataset('./data/', args.dataset, args.max_seq_len, 'test', args.random_project)
+    else:
+        raise ValueError
+
+    train_sampler = None
+    val_sampler = None
+    test_sampler = None
+
+    train_dataLoader = torch.utils.data.DataLoader(train_db, batch_size=args.batch_size,
+                                                   shuffle=(train_sampler is None),
+                                                   sampler=train_sampler, num_workers=args.num_workers, pin_memory=True)
+    val_dataLoader = torch.utils.data.DataLoader(val_db, batch_size=args.batch_size,
+                                                 shuffle=False, num_workers=0,
+                                                 sampler=val_sampler, pin_memory=True)
+    test_dataLoader = torch.utils.data.DataLoader(test_db, batch_size=args.batch_size,
+                                                  shuffle=False, num_workers=0,
+                                                  sampler=test_sampler, pin_memory=True)
+    print('# train db: %d, val db: %d' % (len(train_db), len(val_db)))
+
+    """ train & validate """
     if args.loss == 'ce':
         print('** Using Cross Entropy Loss **')
         criterion = torch.nn.CrossEntropyLoss(reduction='none').cuda()
@@ -47,63 +101,6 @@ def main():
     else:
         raise NotImplementedError
 
-    """ evaluation """
-    if args.evaluate:
-        if args.dataset == 'yms':
-            if args.LXMERT:
-                test_db = NeuMatch_YMS_LXMERT_Dataset('../data/', args.dataset, args.max_seq_len, 'test')
-            else:
-                test_db = NeuMatch_YMS_BERT_Dataset('../data/', args.dataset, args.max_seq_len, 'test', args.random_project)
-        else:
-            raise ValueError
-
-        test_dataLoader = torch.utils.data.DataLoader(test_db, batch_size=args.batch_size,
-                                                      shuffle=False, num_workers=0,
-                                                      pin_memory=True)
-        ckpt = torch.load(os.path.join(
-            './checkpoints', args.where_best,
-            args.where_best_epoch
-        ))['model_state_dict']
-
-        AlignNet_instance.load_state_dict(ckpt)
-
-        evaluate(test_dataLoader, AlignNet_instance, args, None, None, phase='Test')
-        return
-
-    """ data """
-    if args.dataset == 'yms':
-        print("* YMS dataset *")
-        if args.LXMERT:
-            print("** LXMERT FEATURE **")
-            train_db = NeuMatch_YMS_LXMERT_Dataset('../data/', args.dataset, args.training_max_seq_len, 'training')
-            val_db = NeuMatch_YMS_LXMERT_Dataset('../data/', args.dataset, args.max_seq_len, 'val')
-            test_db = NeuMatch_YMS_LXMERT_Dataset('../data/', args.dataset, args.max_seq_len, 'test')
-        else:
-            train_db = NeuMatch_YMS_BERT_Dataset('../data/', args.dataset, args.training_max_seq_len,
-                                                     'training', args.random_project)
-            val_db = NeuMatch_YMS_BERT_Dataset('../data/', args.dataset, args.max_seq_len, 'val',
-                                                   args.random_project)
-            test_db = NeuMatch_YMS_BERT_Dataset('../data/', args.dataset, args.max_seq_len, 'test',
-                                                    args.random_project)
-    else:
-        raise ValueError
-
-    train_sampler = None
-    val_sampler = None
-    test_sampler = None
-
-    train_dataLoader = torch.utils.data.DataLoader(train_db, batch_size=args.batch_size,
-                                                   shuffle=(train_sampler is None),
-                                                   sampler=train_sampler, num_workers=args.num_workers, pin_memory=True)
-    val_dataLoader = torch.utils.data.DataLoader(val_db, batch_size=args.batch_size,
-                                                 shuffle=False, num_workers=0,
-                                                 sampler=val_sampler, pin_memory=True)
-    test_dataLoader = torch.utils.data.DataLoader(test_db, batch_size=args.batch_size,
-                                                  shuffle=False, num_workers=0,
-                                                  sampler=test_sampler, pin_memory=True)
-    print('# train db: %d, val db: %d' % (len(train_db), len(val_db)))
-
-    """ train & validate """
     if args.warm_up_length > 0:
         print('DO {}-epochs WARM-UP !'.format(args.warm_up_length))
         args.warm_up = True
@@ -176,11 +173,8 @@ if __name__ == '__main__':
     parser.add_argument("--ckt_root", type=str, default="./checkpoints",
                         help="the folder path of checkpoints")
 
-    parser.add_argument('--where_best', type=str,
-                        default=None,
+    parser.add_argument('--where_best', type=str, default='./data/RP_SBN_LARS.ckpt',
                         help='where to find the best ckpt')
-    parser.add_argument('--where_best_epoch', type=str, default='NeuMATCHING_350.ckpt',
-                        help='For Loading Model')
 
     """ Regularization """
     parser.add_argument('--dropout', default=0., type=float,
@@ -252,27 +246,28 @@ if __name__ == '__main__':
 
     if args.dataset == 'yms':
         """ We index all the YMS data together. """
-        args.duration = np.load(os.path.join('../data', args.dataset+'_origin_pixel_dimnorm',
+        args.duration = np.load(os.path.join('./data', args.dataset+'_origin_pixel_dimnorm',
                                              '{}_segment_duration.npy'.format(args.dataset)),
                                 allow_pickle=True).item()  # The Duration data for computing sent. IoU
         # args.training_duration = args.val_duration = args.test_duration = args.duration
 
-        args.matched_gt = np.load(os.path.join('../data', args.dataset+'_origin_pixel_dimnorm',
+        args.matched_gt = np.load(os.path.join('./data', args.dataset+'_origin_pixel_dimnorm',
                                                '{}_sent_ground_truth.npy'.format(args.dataset)),
                                   allow_pickle=True).item()
         # args.training_gt = args.val_gt = args.test_gt = args.gt
 
-        args.unmatched_gt = np.load(os.path.join('../data', args.dataset+'_origin_pixel_dimnorm',
+        args.unmatched_gt = np.load(os.path.join('./data', args.dataset+'_origin_pixel_dimnorm',
                                                  '{}_unmatched_ground_truth.npy'.format(args.dataset)),
                                     allow_pickle=True)
     else:
         raise ValueError
 
     args.name = timestr + \
-        str(args.dataset) + \
+        str(args.dataset).upper() + \
         'RP' * args.random_project + 'Full' * (1 - args.random_project) + \
         'SBN' * args.SBN + 'LN{}'.format(args.LN_num) * (args.LN_num is not None) + \
         ('LSR' + str(args.lsr_epsilon)) * (args.loss == 'ls') + \
+        'Lr' + str(args.lr) + 'wd' + str(args.weight_decay) + \
         'WarmUp' + str(args.warm_up_length) + \
         ('AdamLARS' + '_coef' + str(args.lars_coef)) * args.adamlars
 
@@ -298,7 +293,7 @@ if __name__ == '__main__':
 
         torch.cuda.synchronize()
         end = time.time()
-        print('Total time: {} mins.'.format((end - start) / 60))
+        print('Total time: {:.2f} mins.'.format((end - start) / 60))
         print("Memory allocated:{:.2f}G".format(
             torch.cuda.max_memory_allocated() /
             1024 ** 3))
