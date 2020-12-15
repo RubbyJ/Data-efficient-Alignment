@@ -48,7 +48,7 @@ For a text snippet, we extract 768-dimensional sentence embedding from the [BERT
 
 ### Downloading
 For the convenience of experience, we provide the processed data and 
-a pretrained Model (RP+LARS+SBN) at [Google Cloud](https://drive.google.com/drive/folders/1sPh3FDQ3g_OtBJrw_jDL0FPUjskJmlKV?usp=sharing). 
+a pretrained Model (RP+LARS+SBN) at [Google Drive](https://drive.google.com/drive/folders/1sPh3FDQ3g_OtBJrw_jDL0FPUjskJmlKV?usp=sharing). 
 Please put it under this directory. 
 
 ### Evaluation Example
